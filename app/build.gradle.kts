@@ -6,11 +6,11 @@ plugins {
 }
 
 android {
-    namespace = "com.metalshard.hyperion"
+    namespace = "com.metalshard.hyperiondev"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.metalshard.hyperion"
+        applicationId = "com.metalshard.hyperiondev"
         minSdk = 26
         targetSdk = 36
         versionCode = 1

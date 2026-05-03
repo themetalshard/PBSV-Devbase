@@ -1,6 +1,6 @@
-package com.metalshard.hyperion.data
+package com.metalshard.hyperiondev.data
 
-import com.metalshard.hyperion.model.ScheduleEvent
+import com.metalshard.hyperiondev.model.ScheduleEvent
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.Dispatchers

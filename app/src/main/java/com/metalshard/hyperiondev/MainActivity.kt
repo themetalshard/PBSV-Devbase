@@ -1,4 +1,4 @@
-package com.metalshard.hyperion
+package com.metalshard.hyperiondev
 
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -27,8 +27,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.metalshard.hyperion.model.ScheduleEvent
-import com.metalshard.hyperion.ui.ScheduleViewModel
+import com.metalshard.hyperiondev.model.ScheduleEvent
+import com.metalshard.hyperiondev.ui.ScheduleViewModel
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -41,6 +41,7 @@ class MainActivity : ComponentActivity() {
             var isDarkMode by remember { mutableStateOf(true) }
             var useDynamicColors by remember { mutableStateOf(true) }
             var isDayMonthFormat by remember { mutableStateOf(true) }
+            var isHostMode by remember { mutableStateOf(true) }
 
             HyperionTheme(darkTheme = isDarkMode, dynamicColor = useDynamicColors) {
                 Surface(
@@ -53,7 +54,9 @@ class MainActivity : ComponentActivity() {
                         useDynamicColors = useDynamicColors,
                         onDynamicColorsChange = { useDynamicColors = it },
                         isDayMonthFormat = isDayMonthFormat,
-                        onDateFormatChange = { isDayMonthFormat = it }
+                        onDateFormatChange = { isDayMonthFormat = it },
+                        isHostMode = isHostMode,
+                        onHostModeChange = { isHostMode = it }
                     )
                 }
             }
@@ -87,7 +90,9 @@ fun ScheduleScreen(
     useDynamicColors: Boolean,
     onDynamicColorsChange: (Boolean) -> Unit,
     isDayMonthFormat: Boolean,
-    onDateFormatChange: (Boolean) -> Unit
+    onDateFormatChange: (Boolean) -> Unit,
+    isHostMode: Boolean,
+    onHostModeChange: (Boolean) -> Unit
 ) {
     val schedule by vm.schedule.collectAsState()
     val isCalendarView by vm.isCalendarView
@@ -101,9 +106,9 @@ fun ScheduleScreen(
         bottomBar = {
             NavigationBar {
                 val navItems = listOf(
-                    Triple("PBST", "Shield", Icons.Filled.Shield),
-                    Triple("PET", "Fire", Icons.Filled.MedicalServices),
-                    Triple("TMS", "Explosion", Icons.Filled.LocalFireDepartment),
+                    Triple("PBST", "MedicalServices", Icons.Filled.Shield),
+                    Triple("PET", "MedicalServices", Icons.Filled.MedicalServices),
+                    Triple("TMS", "Fire", Icons.Filled.LocalFireDepartment),
                     Triple("PBM", "Camera", Icons.Filled.PhotoCamera)
                 )
                 navItems.forEach { (id, label, icon) ->
@@ -158,14 +163,21 @@ fun ScheduleScreen(
                     useDynamicColors = useDynamicColors,
                     onDynamicColorsChange = onDynamicColorsChange,
                     isDayMonthFormat = isDayMonthFormat,
-                    onDateFormatChange = onDateFormatChange
+                    onDateFormatChange = onDateFormatChange,
+                    isHostMode = isHostMode,
+                    onHostModeChange = onHostModeChange
                 )
             }
         }
     }
 
     selectedEvent?.let { event ->
-        EventDetailPopup(event, onDismiss = { vm.selectedEvent.value = null })
+        EventDetailPopup(
+            event = event,
+            activeGroup = activeGroup,
+            isHostMode = isHostMode,
+            onDismiss = { vm.selectedEvent.value = null }
+        )
     }
 }
 
@@ -176,7 +188,9 @@ fun SettingsContent(
     useDynamicColors: Boolean,
     onDynamicColorsChange: (Boolean) -> Unit,
     isDayMonthFormat: Boolean,
-    onDateFormatChange: (Boolean) -> Unit
+    onDateFormatChange: (Boolean) -> Unit,
+    isHostMode: Boolean,
+    onHostModeChange: (Boolean) -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -211,10 +225,17 @@ fun SettingsContent(
             Switch(checked = isDayMonthFormat, onCheckedChange = onDateFormatChange)
         }
 
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Default.Person, null)
+            Spacer(Modifier.width(16.dp))
+            Text("Host Mode", Modifier.weight(1f))
+            Switch(checked = isHostMode, onCheckedChange = onHostModeChange)
+        }
+
         HorizontalDivider(Modifier.padding(vertical = 8.dp))
 
         Text("Credits", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-        val credits = "TheMetalShard (Dev)\nLunarThePr0t0g3n (Tester)\nKyguy329 (Mac port)\nTheSkout001 (For discovering how to get event schedules)"
+        val credits = "TheMetalShard (Dev)\nAllTheTimeGamingSCP (PB Website creator)\nBliss_god28 (Logo designer)\nLunarThePr0t0g3n (Tester)\nKyguy329 (Mac tester)"
         Text(
             text = credits,
             style = MaterialTheme.typography.bodySmall,
@@ -305,7 +326,12 @@ fun EventCardItem(event: ScheduleEvent, isDayMonthFormat: Boolean, onClick: () -
 }
 
 @Composable
-fun EventDetailPopup(event: ScheduleEvent, onDismiss: () -> Unit) {
+fun EventDetailPopup(
+    event: ScheduleEvent,
+    activeGroup: String,
+    isHostMode: Boolean,
+    onDismiss: () -> Unit
+) {
     val context = LocalContext.current
     val instant = Instant.ofEpochSecond(event.time)
 
@@ -318,6 +344,13 @@ fun EventDetailPopup(event: ScheduleEvent, onDismiss: () -> Unit) {
 
     val cleanNotes = event.notes?.replace(Regex("<:[a-zA-Z0-9_]+:[0-9]+>"), "")
         ?.replace("**", "") ?: "No notes provided."
+
+    var showNotesDialog by remember { mutableStateOf(false) }
+    var selectedAction by remember { mutableStateOf<ScheduleAction?>(null) }
+    var generatedCommand by remember { mutableStateOf("") }
+    var showCommandDialog by remember { mutableStateOf(false) }
+
+    val actions = EventScheduler.getSupportedActions(event.eventType, activeGroup)
 
     fun copyToClipboard(text: String) {
         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
@@ -348,9 +381,97 @@ fun EventDetailPopup(event: ScheduleEvent, onDismiss: () -> Unit) {
 
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
+                if (actions.isNotEmpty() && isHostMode) {
+                    Text("Quick Scheduling", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    actions.forEach { action ->
+                        Button(
+                            onClick = {
+                                selectedAction = action
+                                showNotesDialog = true
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(action.label)
+                        }
+                    }
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                }
+
                 DetailItem("UUID", event.uuid ?: "N/A", isSmall = true, onClick = { copyToClipboard(event.uuid ?: "") })
                 DetailItem("Trainer ID", event.trainerId?.toString() ?: "N/A", isSmall = true)
                 DetailItem("Discord ID", event.discordId ?: "N/A", isSmall = true)
+            }
+        }
+    )
+
+    if (showNotesDialog) {
+        EnterNotesDialog(
+            onDismiss = { showNotesDialog = false },
+            onConfirm = { notes ->
+                selectedAction?.let { action ->
+                    generatedCommand = EventScheduler.generateCommand(
+                        event = event,
+                        activeGroup = activeGroup,
+                        eventType = event.eventType,
+                        actionType = action.actionType,
+                        notes = notes
+                    )
+                    showCommandDialog = true
+                }
+            }
+        )
+    }
+
+    if (showCommandDialog) {
+        CommandDialog(
+            command = generatedCommand,
+            onDismiss = { showCommandDialog = false },
+            onCopy = {
+                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                val clip = ClipData.newPlainText("Copied Command", generatedCommand)
+                clipboard.setPrimaryClip(clip)
+                Toast.makeText(context, "Copied!", Toast.LENGTH_SHORT).show()
+            }
+        )
+    }
+}
+
+@Composable
+fun EnterNotesDialog(onDismiss: () -> Unit, onConfirm: (String) -> Unit) {
+    var notes by remember { mutableStateOf("") }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = { TextButton(onClick = { onConfirm(notes); onDismiss() }) { Text("Generate") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        title = { Text("Enter Notes") },
+        text = {
+            OutlinedTextField(
+                value = notes,
+                onValueChange = { notes = it },
+                label = { Text("Notes") },
+                singleLine = true
+            )
+        }
+    )
+}
+
+@Composable
+fun CommandDialog(command: String, onDismiss: () -> Unit, onCopy: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = { TextButton(onClick = { onCopy(); onDismiss() }) { Text("Copy") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Close") } },
+        title = { Text("Command string") },
+        text = {
+            Column {
+                Text("Here is your formatted schedule command:")
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = command,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
             }
         }
     )

@@ -1,4 +1,4 @@
-package com.metalshard.hyperion.model
+package com.metalshard.hyperiondev.model
 
 import com.google.gson.annotations.SerializedName
 

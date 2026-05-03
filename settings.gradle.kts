@@ -19,5 +19,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "PB Schedule Viewer"
+rootProject.name = "PBSV Devbase"
 include(":app")

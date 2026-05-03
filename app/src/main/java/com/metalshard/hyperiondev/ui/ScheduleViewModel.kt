@@ -1,10 +1,10 @@
-package com.metalshard.hyperion.ui
+package com.metalshard.hyperiondev.ui
 
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.metalshard.hyperion.data.ScheduleRepository
-import com.metalshard.hyperion.model.ScheduleEvent
+import com.metalshard.hyperiondev.data.ScheduleRepository
+import com.metalshard.hyperiondev.model.ScheduleEvent
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
