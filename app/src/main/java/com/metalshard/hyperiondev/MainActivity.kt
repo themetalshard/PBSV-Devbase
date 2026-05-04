@@ -18,6 +18,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -38,26 +39,224 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            var isDarkMode by remember { mutableStateOf(true) }
-            var useDynamicColors by remember { mutableStateOf(true) }
-            var isDayMonthFormat by remember { mutableStateOf(true) }
-            var isHostMode by remember { mutableStateOf(true) }
+            val context = LocalContext.current
+            val prefs = remember { context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE) }
+
+            var isFirstTime by remember { mutableStateOf(prefs.getBoolean("is_first_time", true)) }
+            var isDarkMode by remember { mutableStateOf(prefs.getBoolean("is_dark_mode", true)) }
+            var useDynamicColors by remember { mutableStateOf(prefs.getBoolean("use_dynamic_colors", true)) }
+            var isDayMonthFormat by remember { mutableStateOf(prefs.getBoolean("is_day_month_format", true)) }
+            var isHostMode by remember { mutableStateOf(prefs.getBoolean("is_host_mode", true)) }
+
+            LaunchedEffect(isDarkMode, useDynamicColors, isDayMonthFormat, isHostMode) {
+                prefs.edit()
+                    .putBoolean("is_dark_mode", isDarkMode)
+                    .putBoolean("use_dynamic_colors", useDynamicColors)
+                    .putBoolean("is_day_month_format", isDayMonthFormat)
+                    .putBoolean("is_host_mode", isHostMode)
+                    .apply()
+            }
 
             HyperionTheme(darkTheme = isDarkMode, dynamicColor = useDynamicColors) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    ScheduleScreen(
-                        isDarkMode = isDarkMode,
-                        onDarkModeChange = { isDarkMode = it },
-                        useDynamicColors = useDynamicColors,
-                        onDynamicColorsChange = { useDynamicColors = it },
-                        isDayMonthFormat = isDayMonthFormat,
-                        onDateFormatChange = { isDayMonthFormat = it },
-                        isHostMode = isHostMode,
-                        onHostModeChange = { isHostMode = it }
-                    )
+                    if (isFirstTime) {
+                        OnboardingScreen(
+                            isDarkMode = isDarkMode,
+                            onDarkModeChange = { isDarkMode = it },
+                            useDynamicColors = useDynamicColors,
+                            onDynamicColorsChange = { useDynamicColors = it },
+                            isDayMonthFormat = isDayMonthFormat,
+                            onDateFormatChange = { isDayMonthFormat = it },
+                            isHostMode = isHostMode,
+                            onHostModeChange = { isHostMode = it },
+                            onFinish = {
+                                prefs.edit().putBoolean("is_first_time", false).apply()
+                                isFirstTime = false
+                            }
+                        )
+                    } else {
+                        ScheduleScreen(
+                            isDarkMode = isDarkMode,
+                            onDarkModeChange = { isDarkMode = it },
+                            useDynamicColors = useDynamicColors,
+                            onDynamicColorsChange = { useDynamicColors = it },
+                            isDayMonthFormat = isDayMonthFormat,
+                            onDateFormatChange = { isDayMonthFormat = it },
+                            isHostMode = isHostMode,
+                            onHostModeChange = { isHostMode = it }
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun OnboardingScreen(
+    isDarkMode: Boolean,
+    onDarkModeChange: (Boolean) -> Unit,
+    useDynamicColors: Boolean,
+    onDynamicColorsChange: (Boolean) -> Unit,
+    isDayMonthFormat: Boolean,
+    onDateFormatChange: (Boolean) -> Unit,
+    isHostMode: Boolean,
+    onHostModeChange: (Boolean) -> Unit,
+    onFinish: () -> Unit
+) {
+    var step by remember { mutableStateOf(1) }
+
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.background
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(24.dp),
+            verticalArrangement = Arrangement.SpaceBetween,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.padding(top = 48.dp)
+            ) {
+                Text(
+                    text = "Stage $step of 3",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+
+            when (step) {
+                1 -> {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.CalendarToday,
+                            contentDescription = "Welcome Icon",
+                            modifier = Modifier.size(96.dp),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.height(24.dp))
+                        Text(
+                            text = "Welcome to PB Schedule Viewer!",
+                            style = MaterialTheme.typography.headlineMedium,
+                            fontWeight = FontWeight.Bold,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                            color = MaterialTheme.colorScheme.onBackground
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text(
+                            text = "This app allows you to view schedules for the Roblox group Pinewood Builders.",
+                            style = MaterialTheme.typography.bodyLarge,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                2 -> {
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth(),
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Text(
+                            text = "Appearance Settings",
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.height(24.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.DarkMode, null)
+                            Spacer(Modifier.width(16.dp))
+                            Text("Dark Mode", Modifier.weight(1f))
+                            Switch(
+                                checked = isDarkMode,
+                                onCheckedChange = { onDarkModeChange(it) }
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Palette, null)
+                            Spacer(Modifier.width(16.dp))
+                            Text("Dynamic Colors (Material You)", Modifier.weight(1f))
+                            Switch(
+                                checked = useDynamicColors,
+                                onCheckedChange = { onDynamicColorsChange(it) }
+                            )
+                        }
+                    }
+                }
+                3 -> {
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth(),
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Text(
+                            text = "Preferences",
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.height(24.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.DateRange, null)
+                            Spacer(Modifier.width(16.dp))
+                            Text(
+                                text = if (isDayMonthFormat) "Date Format: DD/MM" else "Date Format: MM/DD",
+                                modifier = Modifier.weight(1f)
+                            )
+                            Switch(
+                                checked = isDayMonthFormat,
+                                onCheckedChange = { onDateFormatChange(it) }
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Person, null)
+                            Spacer(Modifier.width(16.dp))
+                            Text("Host Mode", Modifier.weight(1f))
+                            Switch(
+                                checked = isHostMode,
+                                onCheckedChange = { onHostModeChange(it) }
+                            )
+                        }
+                    }
+                }
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (step > 1) {
+                    OutlinedButton(onClick = { step-- }) {
+                        Text("Back")
+                    }
+                } else {
+                    Spacer(modifier = Modifier.width(1.dp))
+                }
+
+                if (step < 3) {
+                    Button(onClick = { step++ }) {
+                        Text("Next")
+                    }
+                } else {
+                    Button(onClick = { onFinish() }) {
+                        Text("Finish")
+                    }
                 }
             }
         }
@@ -101,12 +300,19 @@ fun ScheduleScreen(
     var showSettings by remember { mutableStateOf(false) }
 
     val sheetState = rememberModalBottomSheetState()
+    var isRefreshing by remember { mutableStateOf(false) }
+
+    LaunchedEffect(vm.isLoading.value) {
+        if (!vm.isLoading.value) {
+            isRefreshing = false
+        }
+    }
 
     Scaffold(
         bottomBar = {
             NavigationBar {
                 val navItems = listOf(
-                    Triple("PBST", "MedicalServices", Icons.Filled.Shield),
+                    Triple("PBST", "Shield", Icons.Filled.Shield),
                     Triple("PET", "MedicalServices", Icons.Filled.MedicalServices),
                     Triple("TMS", "Fire", Icons.Filled.LocalFireDepartment),
                     Triple("PBM", "Camera", Icons.Filled.PhotoCamera)
@@ -135,17 +341,44 @@ fun ScheduleScreen(
             }
         }
     ) { padding ->
-        Box(modifier = Modifier.padding(padding).fillMaxSize()) {
-            if (vm.isLoading.value) {
-                CircularProgressIndicator(Modifier.align(Alignment.Center))
-            } else {
-                val currentGroupData = schedule[activeGroup] ?: schedule[activeGroup.lowercase()] ?: emptyList()
-                if (isCalendarView) {
-                    MultiColumnContent(vm, currentGroupData, isDayMonthFormat)
+        PullToRefreshBox(
+            isRefreshing = isRefreshing,
+            onRefresh = {
+                isRefreshing = true
+                vm.refresh()
+            },
+            modifier = Modifier
+                .padding(padding)
+                .fillMaxSize()
+        ) {
+            Box(modifier = Modifier.fillMaxSize()) {
+                if (vm.isLoading.value && !isRefreshing) {
+                    CircularProgressIndicator(Modifier.align(Alignment.Center))
                 } else {
-                    LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        items(currentGroupData.sortedBy { it.time }) { event ->
-                            EventCardItem(event, isDayMonthFormat) { vm.selectedEvent.value = event }
+                    val currentGroupData = schedule[activeGroup] ?: schedule[activeGroup.lowercase()] ?: emptyList()
+
+                    if (currentGroupData.isEmpty()) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .verticalScroll(rememberScrollState()),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            StateMessageScreen(message = "No schedules for this subgroup")
+                        }
+                    } else {
+                        if (isCalendarView) {
+                            MultiColumnContent(vm, currentGroupData, isDayMonthFormat)
+                        } else {
+                            LazyColumn(
+                                contentPadding = PaddingValues(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(12.dp),
+                                modifier = Modifier.fillMaxSize()
+                            ) {
+                                items(currentGroupData.sortedBy { it.time }) { event ->
+                                    EventCardItem(event, isDayMonthFormat) { vm.selectedEvent.value = event }
+                                }
+                            }
                         }
                     }
                 }
@@ -182,6 +415,31 @@ fun ScheduleScreen(
 }
 
 @Composable
+fun StateMessageScreen(message: String) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Icon(
+            imageVector = Icons.Default.SentimentDissatisfied,
+            contentDescription = "Empty state icon",
+            modifier = Modifier.size(64.dp),
+            tint = MaterialTheme.colorScheme.error
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            text = message,
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurface,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+        )
+    }
+}
+
+@Composable
 fun SettingsContent(
     isDarkMode: Boolean,
     onDarkModeChange: (Boolean) -> Unit,
@@ -205,14 +463,20 @@ fun SettingsContent(
             Icon(Icons.Default.DarkMode, null)
             Spacer(Modifier.width(16.dp))
             Text("Dark Mode", Modifier.weight(1f))
-            Switch(checked = isDarkMode, onCheckedChange = onDarkModeChange)
+            Switch(
+                checked = isDarkMode,
+                onCheckedChange = { onDarkModeChange(it) }
+            )
         }
 
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Default.Palette, null)
             Spacer(Modifier.width(16.dp))
             Text("Dynamic Colors (Material You)", Modifier.weight(1f))
-            Switch(checked = useDynamicColors, onCheckedChange = onDynamicColorsChange)
+            Switch(
+                checked = useDynamicColors,
+                onCheckedChange = { onDynamicColorsChange(it) }
+            )
         }
 
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -222,14 +486,20 @@ fun SettingsContent(
                 text = if (isDayMonthFormat) "Date Format: DD/MM" else "Date Format: MM/DD",
                 modifier = Modifier.weight(1f)
             )
-            Switch(checked = isDayMonthFormat, onCheckedChange = onDateFormatChange)
+            Switch(
+                checked = isDayMonthFormat,
+                onCheckedChange = { onDateFormatChange(it) }
+            )
         }
 
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Default.Person, null)
             Spacer(Modifier.width(16.dp))
             Text("Host Mode", Modifier.weight(1f))
-            Switch(checked = isHostMode, onCheckedChange = onHostModeChange)
+            Switch(
+                checked = isHostMode,
+                onCheckedChange = { onHostModeChange(it) }
+            )
         }
 
         HorizontalDivider(Modifier.padding(vertical = 8.dp))
@@ -254,9 +524,15 @@ fun MultiColumnContent(vm: ScheduleViewModel, events: List<ScheduleEvent>, isDay
         Instant.ofEpochSecond(it.time).atZone(ZoneId.systemDefault()).toLocalDate()
     }.toSortedMap()
 
-    Row(modifier = Modifier.fillMaxSize().horizontalScroll(scrollState).padding(16.dp)) {
+    Row(modifier = Modifier
+        .fillMaxSize()
+        .horizontalScroll(scrollState)
+        .padding(16.dp)) {
         eventsByDate.forEach { (date, dayEvents) ->
-            Column(modifier = Modifier.width(280.dp).fillMaxHeight().padding(end = 16.dp)) {
+            Column(modifier = Modifier
+                .width(280.dp)
+                .fillMaxHeight()
+                .padding(end = 16.dp)) {
                 Text(
                     text = date.format(dayFormatter),
                     style = MaterialTheme.typography.titleMedium,
@@ -282,11 +558,16 @@ fun CompactCard(event: ScheduleEvent, onClick: () -> Unit) {
         onClick = onClick,
         shape = RoundedCornerShape(12.dp),
         color = MaterialTheme.colorScheme.surfaceContainerLow,
-        modifier = Modifier.fillMaxWidth().border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(12.dp))
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(12.dp))
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.size(8.dp).background(color, RoundedCornerShape(2.dp)))
+                Box(
+                    Modifier
+                        .size(8.dp)
+                        .background(color, RoundedCornerShape(2.dp)))
                 Spacer(Modifier.width(8.dp))
                 Text(timeFormatter.format(Instant.ofEpochSecond(event.time)), style = MaterialTheme.typography.labelSmall)
             }
@@ -299,7 +580,6 @@ fun CompactCard(event: ScheduleEvent, onClick: () -> Unit) {
 @Composable
 fun EventCardItem(event: ScheduleEvent, isDayMonthFormat: Boolean, onClick: () -> Unit) {
     val color = event.eventColor?.let { Color(it[0], it[1], it[2]) } ?: Color.Gray
-
     val datePattern = if (isDayMonthFormat) "dd/MM" else "MM/dd"
     val timeFormatter = DateTimeFormatter.ofPattern("HH:mm $datePattern").withZone(ZoneId.systemDefault())
 
@@ -309,8 +589,12 @@ fun EventCardItem(event: ScheduleEvent, isDayMonthFormat: Boolean, onClick: () -
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
         modifier = Modifier.fillMaxWidth()
     ) {
-        Row(modifier = Modifier.padding(16.dp).height(IntrinsicSize.Min), verticalAlignment = Alignment.CenterVertically) {
-            Surface(modifier = Modifier.fillMaxHeight().width(4.dp), color = color, shape = RoundedCornerShape(2.dp)) {}
+        Row(modifier = Modifier
+            .padding(16.dp)
+            .height(IntrinsicSize.Min), verticalAlignment = Alignment.CenterVertically) {
+            Surface(modifier = Modifier
+                .fillMaxHeight()
+                .width(4.dp), color = color, shape = RoundedCornerShape(2.dp)) {}
             Spacer(Modifier.width(16.dp))
             Column {
                 Text(
@@ -327,6 +611,21 @@ fun EventCardItem(event: ScheduleEvent, isDayMonthFormat: Boolean, onClick: () -
 
 @Composable
 fun EventDetailPopup(
+    event: ScheduleEvent,
+    activeGroup: String,
+    isHostMode: Boolean,
+    onDismiss: () -> Unit
+) {
+    GroupData(
+        event = event,
+        activeGroup = activeGroup,
+        isHostMode = isHostMode,
+        onDismiss = onDismiss
+    )
+}
+
+@Composable
+fun GroupData(
     event: ScheduleEvent,
     activeGroup: String,
     isHostMode: Boolean,
@@ -381,8 +680,11 @@ fun EventDetailPopup(
 
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
+                DetailItem("UUID", event.uuid ?: "N/A", isSmall = true, onClick = { copyToClipboard(event.uuid ?: "") })
+                DetailItem("Trainer ID", event.trainerId?.toString() ?: "N/A", isSmall = true)
+                DetailItem("Discord ID", event.discordId ?: "N/A", isSmall = true)
+
                 if (actions.isNotEmpty() && isHostMode) {
-                    Text("Quick Scheduling", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                     actions.forEach { action ->
                         Button(
                             onClick = {
@@ -394,12 +696,7 @@ fun EventDetailPopup(
                             Text(action.label)
                         }
                     }
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                 }
-
-                DetailItem("UUID", event.uuid ?: "N/A", isSmall = true, onClick = { copyToClipboard(event.uuid ?: "") })
-                DetailItem("Trainer ID", event.trainerId?.toString() ?: "N/A", isSmall = true)
-                DetailItem("Discord ID", event.discordId ?: "N/A", isSmall = true)
             }
         }
     )
@@ -485,12 +782,19 @@ fun DetailItem(
     onClick: (() -> Unit)? = null
 ) {
     Column(
-        modifier = if (onClick != null) Modifier.clickable { onClick() } else Modifier
+        modifier = (if (onClick != null) Modifier.clickable { onClick() } else Modifier)
+            .fillMaxWidth()
+            .padding(vertical = 4.dp)
     ) {
         Text(
-            text = "$label: $value",
-            style = if (isSmall) MaterialTheme.typography.labelSmall else MaterialTheme.typography.bodyMedium,
-            color = if (isSmall) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.primary
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Bold
         )
     }
 }
