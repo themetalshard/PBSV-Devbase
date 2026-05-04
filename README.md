@@ -15,7 +15,7 @@ The server code is unfortunately not available as it is private, the app however
 You can install the app using Obtainium through these steps:
 1. Download and install Obtainium from [here](https://github.com/ImranR98/Obtainium/releases) (use the file named `app-release.apk`)
 2. Open Obtainium and click 'Add App'
-3. Type `https://github.com/themetalshard/PBSV-Devbase` into the 'App Source URL' section
+3. Type `https://github.com/themetalshard/PBSV-Devbase` into the 'App Source URL' section (Make sure to also select Include prereleases)
 4. Click 'Add'
 5. Click 'Install'
 
