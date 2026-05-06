@@ -7,8 +7,8 @@ import android.os.Build
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
-import androidx.activity.enableEdgeToEdge
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -160,7 +160,11 @@ fun ScheduleScreen(
             }
         },
         floatingActionButton = {
-            Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            Column(
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                modifier = Modifier.navigationBarsPadding()
+            ) {
                 SmallFloatingActionButton(
                     onClick = { showSettings = true },
                     containerColor = MaterialTheme.colorScheme.secondaryContainer
@@ -182,6 +186,7 @@ fun ScheduleScreen(
             modifier = Modifier
                 .padding(padding)
                 .fillMaxSize()
+                .navigationBarsPadding()
         ) {
             Box(modifier = Modifier.fillMaxSize()) {
                 if (vm.isLoading.value && !isRefreshing) {
@@ -385,7 +390,12 @@ fun MultiColumnContent(vm: ScheduleViewModel, events: List<ScheduleEvent>, isDay
 @Composable
 fun CompactCard(event: ScheduleEvent, onClick: () -> Unit) {
     val color = event.eventColor?.let { Color(it[0], it[1], it[2]) } ?: Color.Gray
+
+    val startTime = Instant.ofEpochSecond(event.time)
+    val endTime = Instant.ofEpochSecond(event.time + (event.duration * 60))
     val timeFormatter = DateTimeFormatter.ofPattern("HH:mm").withZone(ZoneId.systemDefault())
+    val timeRangeText = "${timeFormatter.format(startTime)} - ${timeFormatter.format(endTime)}"
+
     Surface(
         onClick = onClick,
         shape = RoundedCornerShape(12.dp),
@@ -401,7 +411,7 @@ fun CompactCard(event: ScheduleEvent, onClick: () -> Unit) {
                         .size(8.dp)
                         .background(color, RoundedCornerShape(2.dp)))
                 Spacer(Modifier.width(8.dp))
-                Text(timeFormatter.format(Instant.ofEpochSecond(event.time)), style = MaterialTheme.typography.labelSmall)
+                Text(timeRangeText, style = MaterialTheme.typography.labelSmall)
             }
             Text(event.eventType, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
             Text("Host: ${event.trainer}", style = MaterialTheme.typography.bodySmall)
@@ -412,8 +422,14 @@ fun CompactCard(event: ScheduleEvent, onClick: () -> Unit) {
 @Composable
 fun EventCardItem(event: ScheduleEvent, isDayMonthFormat: Boolean, onClick: () -> Unit) {
     val color = event.eventColor?.let { Color(it[0], it[1], it[2]) } ?: Color.Gray
+
+    val startTime = Instant.ofEpochSecond(event.time)
+    val endTime = Instant.ofEpochSecond(event.time + (event.duration * 60))
+    val timeFormatter = DateTimeFormatter.ofPattern("HH:mm").withZone(ZoneId.systemDefault())
+
     val datePattern = if (isDayMonthFormat) "dd/MM" else "MM/dd"
-    val timeFormatter = DateTimeFormatter.ofPattern("HH:mm $datePattern").withZone(ZoneId.systemDefault())
+    val dateFormatter = DateTimeFormatter.ofPattern(datePattern).withZone(ZoneId.systemDefault())
+    val timeText = "${timeFormatter.format(startTime)} - ${timeFormatter.format(endTime)} ${dateFormatter.format(startTime)}"
 
     Surface(
         onClick = onClick,
@@ -430,7 +446,7 @@ fun EventCardItem(event: ScheduleEvent, isDayMonthFormat: Boolean, onClick: () -
             Spacer(Modifier.width(16.dp))
             Column {
                 Text(
-                    text = timeFormatter.format(Instant.ofEpochSecond(event.time)),
+                    text = timeText,
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.primary
                 )
