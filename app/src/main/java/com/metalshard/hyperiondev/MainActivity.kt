@@ -393,16 +393,30 @@ fun CompactCard(event: ScheduleEvent, onClick: () -> Unit) {
 
     val startTime = Instant.ofEpochSecond(event.time)
     val endTime = Instant.ofEpochSecond(event.time + (event.duration * 60))
+    val now = Instant.now()
+    val isRunning = now.isAfter(startTime) && now.isBefore(endTime)
+
+    val runningColor = Color(0xFFFFF9C4)
+    val darkRunningColor = Color(0xFF423D00)
+
     val timeFormatter = DateTimeFormatter.ofPattern("HH:mm").withZone(ZoneId.systemDefault())
     val timeRangeText = "${timeFormatter.format(startTime)} - ${timeFormatter.format(endTime)}"
 
     Surface(
         onClick = onClick,
         shape = RoundedCornerShape(12.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        color = if (isRunning) {
+            if (isSystemInDarkTheme()) darkRunningColor else runningColor
+        } else {
+            MaterialTheme.colorScheme.surfaceContainerLow
+        },
         modifier = Modifier
             .fillMaxWidth()
-            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(12.dp))
+            .border(
+                width = if (isRunning) 2.dp else 1.dp,
+                color = if (isRunning) Color(0xFFFFD700) else MaterialTheme.colorScheme.outlineVariant,
+                shape = RoundedCornerShape(12.dp)
+            )
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -411,7 +425,11 @@ fun CompactCard(event: ScheduleEvent, onClick: () -> Unit) {
                         .size(8.dp)
                         .background(color, RoundedCornerShape(2.dp)))
                 Spacer(Modifier.width(8.dp))
-                Text(timeRangeText, style = MaterialTheme.typography.labelSmall)
+                Text(
+                    text = if (isRunning) "● LIVE: $timeRangeText" else timeRangeText,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (isRunning) Color(0xFFFBC02D) else MaterialTheme.typography.labelSmall.color
+                )
             }
             Text(event.eventType, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
             Text("Host: ${event.trainer}", style = MaterialTheme.typography.bodySmall)
@@ -425,8 +443,13 @@ fun EventCardItem(event: ScheduleEvent, isDayMonthFormat: Boolean, onClick: () -
 
     val startTime = Instant.ofEpochSecond(event.time)
     val endTime = Instant.ofEpochSecond(event.time + (event.duration * 60))
-    val timeFormatter = DateTimeFormatter.ofPattern("HH:mm").withZone(ZoneId.systemDefault())
+    val now = Instant.now()
+    val isRunning = now.isAfter(startTime) && now.isBefore(endTime)
 
+    val runningColor = Color(0xFFFFF9C4)
+    val darkRunningColor = Color(0xFF332E00)
+
+    val timeFormatter = DateTimeFormatter.ofPattern("HH:mm").withZone(ZoneId.systemDefault())
     val datePattern = if (isDayMonthFormat) "dd/MM" else "MM/dd"
     val dateFormatter = DateTimeFormatter.ofPattern(datePattern).withZone(ZoneId.systemDefault())
     val timeText = "${timeFormatter.format(startTime)} - ${timeFormatter.format(endTime)} ${dateFormatter.format(startTime)}"
@@ -434,8 +457,17 @@ fun EventCardItem(event: ScheduleEvent, isDayMonthFormat: Boolean, onClick: () -
     Surface(
         onClick = onClick,
         shape = RoundedCornerShape(24.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        modifier = Modifier.fillMaxWidth()
+        color = if (isRunning) {
+            if (isSystemInDarkTheme()) darkRunningColor else runningColor
+        } else {
+            MaterialTheme.colorScheme.surfaceContainerHigh
+        },
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(
+                if (isRunning) Modifier.border(2.dp, Color(0xFFFFD700), RoundedCornerShape(24.dp))
+                else Modifier
+            )
     ) {
         Row(modifier = Modifier
             .padding(16.dp)
@@ -446,10 +478,14 @@ fun EventCardItem(event: ScheduleEvent, isDayMonthFormat: Boolean, onClick: () -
             Spacer(Modifier.width(16.dp))
             Column {
                 Text(
-                    text = timeText,
+                    text = if (isRunning) "CURRENTLY RUNNING" else timeText,
                     style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.primary
+                    fontWeight = if (isRunning) FontWeight.ExtraBold else FontWeight.Normal,
+                    color = if (isRunning) Color(0xFFFBC02D) else MaterialTheme.colorScheme.primary
                 )
+                if (isRunning) {
+                    Text(timeText, style = MaterialTheme.typography.labelSmall)
+                }
                 Text(event.eventType, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 Text("Host: ${event.trainer}", style = MaterialTheme.typography.bodySmall)
             }
