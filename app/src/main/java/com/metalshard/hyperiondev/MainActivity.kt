@@ -47,13 +47,15 @@ class MainActivity : ComponentActivity() {
             var useDynamicColors by remember { mutableStateOf(prefs.getBoolean("use_dynamic_colors", true)) }
             var isDayMonthFormat by remember { mutableStateOf(prefs.getBoolean("is_day_month_format", true)) }
             var isHostMode by remember { mutableStateOf(prefs.getBoolean("is_host_mode", true)) }
+            var showLiveIndicator by remember { mutableStateOf(prefs.getBoolean("show_live_indicator", true)) }
 
-            LaunchedEffect(isDarkMode, useDynamicColors, isDayMonthFormat, isHostMode) {
+            LaunchedEffect(isDarkMode, useDynamicColors, isDayMonthFormat, isHostMode, showLiveIndicator) {
                 prefs.edit()
                     .putBoolean("is_dark_mode", isDarkMode)
                     .putBoolean("use_dynamic_colors", useDynamicColors)
                     .putBoolean("is_day_month_format", isDayMonthFormat)
                     .putBoolean("is_host_mode", isHostMode)
+                    .putBoolean("show_live_indicator", showLiveIndicator)
                     .apply()
             }
 
@@ -68,6 +70,8 @@ class MainActivity : ComponentActivity() {
                             onDarkModeChange = { isDarkMode = it },
                             useDynamicColors = useDynamicColors,
                             onDynamicColorsChange = { useDynamicColors = it },
+                            showLiveIndicator = showLiveIndicator,
+                            onLiveIndicatorChange = { showLiveIndicator = it },
                             isDayMonthFormat = isDayMonthFormat,
                             onDateFormatChange = { isDayMonthFormat = it },
                             isHostMode = isHostMode,
@@ -86,7 +90,9 @@ class MainActivity : ComponentActivity() {
                             isDayMonthFormat = isDayMonthFormat,
                             onDateFormatChange = { isDayMonthFormat = it },
                             isHostMode = isHostMode,
-                            onHostModeChange = { isHostMode = it }
+                            onHostModeChange = { isHostMode = it },
+                            showLiveIndicator = showLiveIndicator,
+                            onLiveIndicatorChange = { showLiveIndicator = it }
                         )
                     }
                 }
@@ -123,7 +129,9 @@ fun ScheduleScreen(
     isDayMonthFormat: Boolean,
     onDateFormatChange: (Boolean) -> Unit,
     isHostMode: Boolean,
-    onHostModeChange: (Boolean) -> Unit
+    onHostModeChange: (Boolean) -> Unit,
+    showLiveIndicator: Boolean,
+    onLiveIndicatorChange: (Boolean) -> Unit
 ) {
     val schedule by vm.schedule.collectAsState()
     val isCalendarView by vm.isCalendarView
@@ -205,7 +213,7 @@ fun ScheduleScreen(
                         }
                     } else {
                         if (isCalendarView) {
-                            MultiColumnContent(vm, currentGroupData, isDayMonthFormat)
+                            MultiColumnContent(vm, currentGroupData, isDayMonthFormat, showLiveIndicator)
                         } else {
                             LazyColumn(
                                 contentPadding = PaddingValues(16.dp),
@@ -213,7 +221,7 @@ fun ScheduleScreen(
                                 modifier = Modifier.fillMaxSize()
                             ) {
                                 items(currentGroupData.sortedBy { it.time }) { event ->
-                                    EventCardItem(event, isDayMonthFormat) { vm.selectedEvent.value = event }
+                                    EventCardItem(event, isDayMonthFormat, showLiveIndicator) { vm.selectedEvent.value = event }
                                 }
                             }
                         }
@@ -235,7 +243,9 @@ fun ScheduleScreen(
                     isDayMonthFormat = isDayMonthFormat,
                     onDateFormatChange = onDateFormatChange,
                     isHostMode = isHostMode,
-                    onHostModeChange = onHostModeChange
+                    onHostModeChange = onHostModeChange,
+                    showLiveIndicator = showLiveIndicator,
+                    onLiveIndicatorChange = onLiveIndicatorChange
                 )
             }
         }
@@ -285,7 +295,9 @@ fun SettingsContent(
     isDayMonthFormat: Boolean,
     onDateFormatChange: (Boolean) -> Unit,
     isHostMode: Boolean,
-    onHostModeChange: (Boolean) -> Unit
+    onHostModeChange: (Boolean) -> Unit,
+    showLiveIndicator: Boolean,
+    onLiveIndicatorChange: (Boolean) -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -300,21 +312,24 @@ fun SettingsContent(
             Icon(Icons.Default.DarkMode, null)
             Spacer(Modifier.width(16.dp))
             Text("Dark Mode", Modifier.weight(1f))
-            Switch(
-                checked = isDarkMode,
-                onCheckedChange = { onDarkModeChange(it) }
-            )
+            Switch(checked = isDarkMode, onCheckedChange = onDarkModeChange)
         }
 
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Default.Palette, null)
             Spacer(Modifier.width(16.dp))
             Text("Dynamic Colors (Material You)", Modifier.weight(1f))
-            Switch(
-                checked = useDynamicColors,
-                onCheckedChange = { onDynamicColorsChange(it) }
-            )
+            Switch(checked = useDynamicColors, onCheckedChange = onDynamicColorsChange)
         }
+
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Default.Timer, null)
+            Spacer(Modifier.width(16.dp))
+            Text("Highlight Live Events", Modifier.weight(1f))
+            Switch(checked = showLiveIndicator, onCheckedChange = onLiveIndicatorChange)
+        }
+
+        HorizontalDivider(Modifier.padding(vertical = 8.dp))
 
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Default.DateRange, null)
@@ -323,20 +338,14 @@ fun SettingsContent(
                 text = if (isDayMonthFormat) "Date Format: DD/MM" else "Date Format: MM/DD",
                 modifier = Modifier.weight(1f)
             )
-            Switch(
-                checked = isDayMonthFormat,
-                onCheckedChange = { onDateFormatChange(it) }
-            )
+            Switch(checked = isDayMonthFormat, onCheckedChange = onDateFormatChange)
         }
 
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Default.Person, null)
             Spacer(Modifier.width(16.dp))
             Text("Host Mode", Modifier.weight(1f))
-            Switch(
-                checked = isHostMode,
-                onCheckedChange = { onHostModeChange(it) }
-            )
+            Switch(checked = isHostMode, onCheckedChange = onHostModeChange)
         }
 
         HorizontalDivider(Modifier.padding(vertical = 8.dp))
@@ -353,7 +362,7 @@ fun SettingsContent(
 }
 
 @Composable
-fun MultiColumnContent(vm: ScheduleViewModel, events: List<ScheduleEvent>, isDayMonthFormat: Boolean) {
+fun MultiColumnContent(vm: ScheduleViewModel, events: List<ScheduleEvent>, isDayMonthFormat: Boolean, showLiveIndicator: Boolean) {
     val pattern = if (isDayMonthFormat) "EEE dd/MM" else "EEE MM/dd"
     val dayFormatter = DateTimeFormatter.ofPattern(pattern)
     val scrollState = rememberScrollState()
@@ -379,7 +388,7 @@ fun MultiColumnContent(vm: ScheduleViewModel, events: List<ScheduleEvent>, isDay
                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = MaterialTheme.colorScheme.outlineVariant)
                 LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     items(dayEvents.sortedBy { it.time }) { event ->
-                        CompactCard(event) { vm.selectedEvent.value = event }
+                        CompactCard(event, showLiveIndicator) { vm.selectedEvent.value = event }
                     }
                 }
             }
@@ -388,16 +397,17 @@ fun MultiColumnContent(vm: ScheduleViewModel, events: List<ScheduleEvent>, isDay
 }
 
 @Composable
-fun CompactCard(event: ScheduleEvent, onClick: () -> Unit) {
+fun CompactCard(event: ScheduleEvent, showLiveIndicator: Boolean, onClick: () -> Unit) {
     val color = event.eventColor?.let { Color(it[0], it[1], it[2]) } ?: Color.Gray
 
     val startTime = Instant.ofEpochSecond(event.time)
     val endTime = Instant.ofEpochSecond(event.time + (event.duration * 60))
     val now = Instant.now()
-    val isRunning = now.isAfter(startTime) && now.isBefore(endTime)
+    val isRunning = showLiveIndicator && now.isAfter(startTime) && now.isBefore(endTime)
+    val isDark = isSystemInDarkTheme()
 
-    val runningColor = Color(0xFFFFF9C4)
-    val darkRunningColor = Color(0xFF423D00)
+    val runningBgColor = if (isDark) Color(0xFF423D00) else Color(0xFFB8860B)
+    val runningContentColor = if (isDark) Color(0xFFFFF9C4) else Color.White
 
     val timeFormatter = DateTimeFormatter.ofPattern("HH:mm").withZone(ZoneId.systemDefault())
     val timeRangeText = "${timeFormatter.format(startTime)} - ${timeFormatter.format(endTime)}"
@@ -405,11 +415,8 @@ fun CompactCard(event: ScheduleEvent, onClick: () -> Unit) {
     Surface(
         onClick = onClick,
         shape = RoundedCornerShape(12.dp),
-        color = if (isRunning) {
-            if (isSystemInDarkTheme()) darkRunningColor else runningColor
-        } else {
-            MaterialTheme.colorScheme.surfaceContainerLow
-        },
+        color = if (isRunning) runningBgColor else MaterialTheme.colorScheme.surfaceContainerLow,
+        contentColor = if (isRunning) runningContentColor else MaterialTheme.colorScheme.onSurface,
         modifier = Modifier
             .fillMaxWidth()
             .border(
@@ -428,7 +435,7 @@ fun CompactCard(event: ScheduleEvent, onClick: () -> Unit) {
                 Text(
                     text = if (isRunning) "● LIVE: $timeRangeText" else timeRangeText,
                     style = MaterialTheme.typography.labelSmall,
-                    color = if (isRunning) Color(0xFFFBC02D) else MaterialTheme.typography.labelSmall.color
+                    fontWeight = if (isRunning) FontWeight.Bold else FontWeight.Normal
                 )
             }
             Text(event.eventType, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
@@ -438,16 +445,17 @@ fun CompactCard(event: ScheduleEvent, onClick: () -> Unit) {
 }
 
 @Composable
-fun EventCardItem(event: ScheduleEvent, isDayMonthFormat: Boolean, onClick: () -> Unit) {
+fun EventCardItem(event: ScheduleEvent, isDayMonthFormat: Boolean, showLiveIndicator: Boolean, onClick: () -> Unit) {
     val color = event.eventColor?.let { Color(it[0], it[1], it[2]) } ?: Color.Gray
 
     val startTime = Instant.ofEpochSecond(event.time)
     val endTime = Instant.ofEpochSecond(event.time + (event.duration * 60))
     val now = Instant.now()
-    val isRunning = now.isAfter(startTime) && now.isBefore(endTime)
+    val isRunning = showLiveIndicator && now.isAfter(startTime) && now.isBefore(endTime)
+    val isDark = isSystemInDarkTheme()
 
-    val runningColor = Color(0xFFFFF9C4)
-    val darkRunningColor = Color(0xFF332E00)
+    val runningBgColor = if (isDark) Color(0xFF332E00) else Color(0xFFB8860B)
+    val runningContentColor = if (isDark) Color(0xFFFFD700) else Color.White
 
     val timeFormatter = DateTimeFormatter.ofPattern("HH:mm").withZone(ZoneId.systemDefault())
     val datePattern = if (isDayMonthFormat) "dd/MM" else "MM/dd"
@@ -457,11 +465,8 @@ fun EventCardItem(event: ScheduleEvent, isDayMonthFormat: Boolean, onClick: () -
     Surface(
         onClick = onClick,
         shape = RoundedCornerShape(24.dp),
-        color = if (isRunning) {
-            if (isSystemInDarkTheme()) darkRunningColor else runningColor
-        } else {
-            MaterialTheme.colorScheme.surfaceContainerHigh
-        },
+        color = if (isRunning) runningBgColor else MaterialTheme.colorScheme.surfaceContainerHigh,
+        contentColor = if (isRunning) runningContentColor else MaterialTheme.colorScheme.onSurface,
         modifier = Modifier
             .fillMaxWidth()
             .then(
@@ -472,16 +477,20 @@ fun EventCardItem(event: ScheduleEvent, isDayMonthFormat: Boolean, onClick: () -
         Row(modifier = Modifier
             .padding(16.dp)
             .height(IntrinsicSize.Min), verticalAlignment = Alignment.CenterVertically) {
-            Surface(modifier = Modifier
-                .fillMaxHeight()
-                .width(4.dp), color = color, shape = RoundedCornerShape(2.dp)) {}
+            Surface(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .width(4.dp),
+                color = if (isRunning) Color.White else color,
+                shape = RoundedCornerShape(2.dp)
+            ) {}
             Spacer(Modifier.width(16.dp))
             Column {
                 Text(
-                    text = if (isRunning) "CURRENTLY RUNNING" else timeText,
+                    text = if (isRunning) "● LIVE" else timeText,
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = if (isRunning) FontWeight.ExtraBold else FontWeight.Normal,
-                    color = if (isRunning) Color(0xFFFBC02D) else MaterialTheme.colorScheme.primary
+                    color = if (isRunning) runningContentColor else MaterialTheme.colorScheme.primary
                 )
                 if (isRunning) {
                     Text(timeText, style = MaterialTheme.typography.labelSmall)

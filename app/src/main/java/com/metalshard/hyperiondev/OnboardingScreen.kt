@@ -19,6 +19,7 @@ import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -46,6 +47,8 @@ fun OnboardingScreen(
     onDarkModeChange: (Boolean) -> Unit,
     useDynamicColors: Boolean,
     onDynamicColorsChange: (Boolean) -> Unit,
+    showLiveIndicator: Boolean,
+    onLiveIndicatorChange: (Boolean) -> Unit,
     isDayMonthFormat: Boolean,
     onDateFormatChange: (Boolean) -> Unit,
     isHostMode: Boolean,
@@ -159,7 +162,18 @@ fun OnboardingScreen(
                                 onCheckedChange = { onDynamicColorsChange(it) }
                             )
                         }
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Timer, null)
+                            Spacer(Modifier.width(16.dp))
+                            Text("Highlight Live Events", Modifier.weight(1f))
+                            Switch(
+                                checked = showLiveIndicator,
+                                onCheckedChange = { onLiveIndicatorChange(it) }
+                            )
+                        }
                     }
+
                 }
                 3 -> {
                     Column(
